@@ -97,7 +97,7 @@ pub const Sphere = struct {
     // the question becomes:
     //            (C - (Q + t*d)) . (C - (Q + t*d)) = r²
     //          (- t*d + (C - Q)) . (- t*d + (C - Q)) = r²                                 this: (a+b)(a+b)
-    //        t² * d.d + (C - Q) . (C - Q) - 2*t * d . (C - Q) = r²              distributes to this:  a²+b²+2ab
+    //        t² * d.d + (C - Q) . (C - Q) - 2*t * d . (C - Q) = r²              expands to this:  a²+b²+2ab
     //       t² * d.d + (C - Q) . (C - Q) - 2*t * d . (C - Q) - r² = 0
     // This is a quadratic equation in the form ax² + bx + c = 0 where x is t which solution is
     //                      (-b ± √(b² - 4ac)) / 2a
@@ -111,7 +111,7 @@ pub const Sphere = struct {
     //      - Solution 1: (-b + √(b² - 4ac)) / 2a
     //      - Solution 2: (-b - √(b² - 4ac)) / 2a
     // zero    : Exactly one solution: -b / 2a
-    // => The ray intersects with the sphere only if the discrimnant is positive or zero
+    // => The ray intersects with the sphere only if the discriminant is positive or zero
     //
     // Simplification:
     // Let's consider that b = -2h then the solution to the quadratic equation becomes:

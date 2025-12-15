@@ -1,12 +1,15 @@
 const std = @import("std");
 const h = @import("hittables.zig");
 const Camera = @import("Camera.zig");
+const rand = @import("random.zig");
 
 const Hittable = h.Hittable;
 const HittableList = h.HittableList;
 const Sphere = h.Sphere;
 
 pub fn main() !void {
+    rand.initGlobal();
+
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
 
@@ -19,6 +22,7 @@ pub fn main() !void {
         .aspect_ratio = 16.0 / 9.0,
         .width = 400,
         .samples_per_pixel = 100,
+        .max_depth = 50,
     };
     try camera.render(&world);
 }

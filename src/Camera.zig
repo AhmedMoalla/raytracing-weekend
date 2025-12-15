@@ -4,6 +4,7 @@ const vec = @import("vec3.zig");
 const h = @import("hittables.zig");
 const Ray = @import("Ray.zig");
 const Interval = @import("Interval.zig");
+const rand = @import("random.zig");
 
 const as = utils.as;
 const Vec3f = vec.Vec3f;
@@ -12,7 +13,6 @@ const Color = vec.Color;
 
 const s = vec.s;
 const unit = vec.unit;
-prng: std.Random = undefined,
 
 aspect_ratio: f64 = 1.0, // Ratio of image width over height
 width: usize = 100, // Rendered image width in pixel count
@@ -20,6 +20,7 @@ height: usize = undefined, // Rendered image height
 
 samples_per_pixel: usize = 10, // Count of random samples for each pixel
 pixel_samples_scale: f64 = undefined, // Color scale factor for a sum of pixel samples
+max_depth: usize = 10, //Maximum number of ray bounces into scene
 
 center: Point = undefined, // Camera center
 pixel00_location: Point = undefined, // Location of pixel 0, 0
@@ -28,11 +29,6 @@ pixel_delta_v: Vec3f = undefined, // Offset to pixel below
 
 pub fn render(self: *@This(), world: *const h.Hittable) !void {
     self.initialize();
-
-    var seed: u64 = undefined;
-    std.posix.getrandom(std.mem.asBytes(&seed)) catch unreachable;
-    var p = std.Random.DefaultPrng.init(seed);
-    self.prng = p.random();
 
     var stdout_buffer: [1024]u8 = std.mem.zeroes([1024]u8);
     var stdout_file = std.fs.File.stdout();
@@ -49,7 +45,7 @@ pub fn render(self: *@This(), world: *const h.Hittable) !void {
             var pixel_color = Color{ 0, 0, 0 };
             for (0..self.samples_per_pixel) |_| {
                 const ray = self.getRay(x, y);
-                pixel_color += rayColor(ray, world);
+                pixel_color += rayColor(ray, self.max_depth, world);
             }
             try writeColor(stdout, s(self.pixel_samples_scale) * pixel_color);
         }
@@ -82,7 +78,7 @@ fn initialize(self: *@This()) void {
 fn getRay(self: @This(), x: usize, y: usize) Ray {
     const xf64 = as(f64, x);
     const yf64 = as(f64, y);
-    const x_offset, const y_offset, _ = randomSquare(self.prng);
+    const x_offset, const y_offset, _ = rand.square(0.5);
     const pixel_sample = self.pixel00_location + //
         ((s(xf64 + x_offset) * self.pixel_delta_u) + //
             (s(yf64 + y_offset) * self.pixel_delta_v));
@@ -91,17 +87,21 @@ fn getRay(self: @This(), x: usize, y: usize) Ray {
     return .init(origin, direction);
 }
 
-fn randomSquare(prng: std.Random) Vec3f {
-    return .{
-        prng.float(f64) - 0.5,
-        prng.float(f64) - 0.5,
-        0,
-    };
-}
+const @"[0.001,inf)": Interval = .{ .min = 0.001, .max = std.math.inf(f64) };
 
-fn rayColor(ray: Ray, world: *const h.Hittable) vec.Color {
-    if (world.hit(ray, .{ .min = 0, .max = std.math.inf(f64) })) |rec| {
-        return s(0.5) * (rec.normal + vec.Color{ 1, 1, 1 });
+fn rayColor(ray: Ray, max_depth: usize, world: *const h.Hittable) vec.Color {
+    // If we've exceeded the ray bounce limit, no more light is gathered.
+    if (max_depth == 0) {
+        return Color{ 0, 0, 0 };
+    }
+
+    if (world.hit(ray, @"[0.001,inf)")) |rec| {
+        const direction = rec.normal + rand.unit();
+        return s(0.5) * rayColor(
+            Ray.init(rec.p, direction),
+            max_depth - 1,
+            world,
+        );
     }
 
     const unit_direction = unit(ray.direction);
@@ -110,11 +110,25 @@ fn rayColor(ray: Ray, world: *const h.Hittable) vec.Color {
 }
 
 fn writeColor(writer: *std.io.Writer, color: Color) !void {
-    const r, const g, const b = color;
+    var r, var g, var b = color;
     const intensity = Interval{ .min = 0, .max = 0.999 };
+
+    // Apply a linear to gamma transform for gamma 2
+    r = linearToGamma(r);
+    g = linearToGamma(g);
+    b = linearToGamma(b);
+
+    // Translate the [0,1] component values to the byte range [0,255].
     const rbyte: i32 = @intFromFloat(256 * intensity.clamp(r));
     const gbyte: i32 = @intFromFloat(256 * intensity.clamp(g));
     const bbyte: i32 = @intFromFloat(256 * intensity.clamp(b));
 
     try writer.print("{d} {d} {d}\n", .{ rbyte, gbyte, bbyte });
+}
+
+fn linearToGamma(linear_component: f64) f64 {
+    if (linear_component > 0) {
+        return @sqrt(linear_component);
+    }
+    return 0;
 }
