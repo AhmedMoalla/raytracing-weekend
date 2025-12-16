@@ -2,6 +2,13 @@ const std = @import("std");
 const h = @import("hittables.zig");
 const Camera = @import("Camera.zig");
 const rand = @import("random.zig");
+const material = @import("materials.zig");
+const vec = @import("vec3.zig");
+
+const Color = vec.Color;
+
+const Lambertian = material.Lambertian;
+const Metal = material.Metal;
 
 const Hittable = h.Hittable;
 const HittableList = h.HittableList;
@@ -13,10 +20,16 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     const allocator = arena.allocator();
 
-    var world_list = try HittableList.init(allocator);
-    try world_list.add(Sphere.init(.{ 0, -100.5, -1 }, 100));
-    try world_list.add(Sphere.init(.{ 0, 0, -1 }, 0.5));
-    const world: Hittable = .{ .list = world_list };
+    const material_ground = Lambertian.init(Color{ 0.8, 0.8, 0.0 });
+    const material_center = Lambertian.init(Color{ 0.1, 0.2, 0.5 });
+    const material_left = Metal.init(Color{ 0.8, 0.8, 0.8 }, 0.3);
+    const material_right = Metal.init(Color{ 0.8, 0.6, 0.2 }, 1.0);
+
+    var world = try HittableList.init(allocator);
+    try world.list.add(Sphere.init(.{ 0, -100.5, -1 }, 100, material_ground));
+    try world.list.add(Sphere.init(.{ 1, 0, -1 }, 0.5, material_right));
+    try world.list.add(Sphere.init(.{ -1, 0, -1 }, 0.5, material_left));
+    try world.list.add(Sphere.init(.{ 0, 0, -1.2 }, 0.5, material_center));
 
     var camera = Camera{
         .aspect_ratio = 16.0 / 9.0,

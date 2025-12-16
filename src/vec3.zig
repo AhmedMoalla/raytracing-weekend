@@ -20,6 +20,15 @@ pub fn len_squared(v: anytype) f64 {
     return v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
 }
 
+pub fn nearZero(vec: Vec3f) bool {
+    const epsilon: f64 = 1e-8;
+    return @reduce(.And, @abs(vec) < s(epsilon));
+}
+
+pub fn reflect(vec: Vec3f, normal: Vec3f) Vec3f {
+    return vec - s(2) * s(dot(vec, normal)) * normal;
+}
+
 // Scalar
 pub fn s(value: anytype) Vec3f {
     return utils.as(Vec3f, value);

@@ -2,6 +2,8 @@ const std = @import("std");
 const vec = @import("vec3.zig");
 const Ray = @import("Ray.zig");
 const Interval = @import("Interval.zig");
+const m = @import("materials.zig");
+const Material = m.Material;
 
 const Vec3f = vec.Vec3f;
 const Point = vec.Point;
@@ -15,6 +17,7 @@ pub const HitRecord = struct {
     normal: vec.Vec3f = undefined,
     t: f64 = undefined,
     front_face: bool = undefined,
+    material: Material = undefined,
 
     pub fn set_face_normal(self: *@This(), ray: Ray, outward_normal: Vec3f) void {
         self.front_face = dot(ray.direction, outward_normal) < 0;
@@ -37,10 +40,12 @@ pub const HittableList = struct {
     allocator: std.mem.Allocator,
     objects: std.ArrayList(Hittable) = undefined,
 
-    pub fn init(allocator: std.mem.Allocator) !HittableList {
+    pub fn init(allocator: std.mem.Allocator) !Hittable {
         return .{
-            .allocator = allocator,
-            .objects = try std.ArrayList(Hittable).initCapacity(allocator, 10),
+            .list = .{
+                .allocator = allocator,
+                .objects = try std.ArrayList(Hittable).initCapacity(allocator, 10),
+            },
         };
     }
 
@@ -70,12 +75,14 @@ pub const HittableList = struct {
 pub const Sphere = struct {
     center: vec.Point,
     radius: f64,
+    material: Material,
 
-    pub fn init(center: vec.Point, radius: f64) Hittable {
+    pub fn init(center: vec.Point, radius: f64, material: Material) Hittable {
         return .{
             .sphere = .{
                 .center = center,
                 .radius = @max(0, radius),
+                .material = material,
             },
         };
     }
@@ -144,6 +151,7 @@ pub const Sphere = struct {
         record.p = ray.at(record.t);
         const outward_normal = (record.p - self.center) / s(self.radius);
         HitRecord.set_face_normal(&record, ray, outward_normal);
+        record.material = self.material;
         return record;
     }
 };

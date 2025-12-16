@@ -89,19 +89,21 @@ fn getRay(self: @This(), x: usize, y: usize) Ray {
 
 const @"[0.001,inf)": Interval = .{ .min = 0.001, .max = std.math.inf(f64) };
 
-fn rayColor(ray: Ray, max_depth: usize, world: *const h.Hittable) vec.Color {
+fn rayColor(ray: Ray, depth: usize, world: *const h.Hittable) Color {
     // If we've exceeded the ray bounce limit, no more light is gathered.
-    if (max_depth == 0) {
+    if (depth == 0) {
         return Color{ 0, 0, 0 };
     }
 
-    if (world.hit(ray, @"[0.001,inf)")) |rec| {
-        const direction = rec.normal + rand.unit();
-        return s(0.5) * rayColor(
-            Ray.init(rec.p, direction),
-            max_depth - 1,
-            world,
-        );
+    if (world.hit(ray, @"[0.001,inf)")) |hit| {
+        if (hit.material.scatter(ray, hit)) |scatter| {
+            return scatter.attenuation * rayColor(
+                scatter.scattered,
+                depth - 1,
+                world,
+            );
+        }
+        return Color{ 0, 0, 0 };
     }
 
     const unit_direction = unit(ray.direction);
