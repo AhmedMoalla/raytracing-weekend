@@ -29,6 +29,13 @@ pub fn reflect(vec: Vec3f, normal: Vec3f) Vec3f {
     return vec - s(2) * s(dot(vec, normal)) * normal;
 }
 
+pub fn refract(uv: Vec3f, normal: Vec3f, etai_over_etat: f64) Vec3f {
+    const cos_theta = @min(dot(-uv, normal), 1.0);
+    const r_out_perp = s(etai_over_etat) * (uv + s(cos_theta) * normal);
+    const r_out_parallel = s(-@sqrt(@abs(1.0 - len_squared(r_out_perp)))) * normal;
+    return r_out_perp + r_out_parallel;
+}
+
 // Scalar
 pub fn s(value: anytype) Vec3f {
     return utils.as(Vec3f, value);
